@@ -39,7 +39,7 @@ object Main extends ZIOAppDefault:
             if file.exists() && file.isFile then file
             else new File(staticDir, "index.html") // SPA fallback
 
-          Response(body = Body.fromFile(targetFile))
+          Body.fromFile(targetFile).map(body => Response(body = body))
         }
       )
     else Routes.empty
