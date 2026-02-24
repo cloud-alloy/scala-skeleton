@@ -13,6 +13,7 @@ WORKDIR /app
 
 # Copy build config first for better layer caching
 COPY build.sbt .
+COPY .scalafmt.conf .
 COPY project/ project/
 
 # Pre-fetch SBT and dependencies
