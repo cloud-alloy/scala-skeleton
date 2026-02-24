@@ -19,10 +19,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# CDK
-cdk.out/
-cdk.context.json
-
 # Android SDK components (install globally via Android Studio/sdkmanager)
 build-tools/
 cmdline-tools/

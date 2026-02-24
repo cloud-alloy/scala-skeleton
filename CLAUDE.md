@@ -1,6 +1,6 @@
 # Scala Skeleton
 
-Full-stack Scala 3 project skeleton with ZIO backend, Laminar frontend, Tauri desktop/mobile, and AWS CDK infrastructure.
+Full-stack Scala 3 project skeleton with ZIO backend, Laminar frontend, and Tauri desktop/mobile support. Deploys to Fly.io.
 
 ## Tech Stack
 
@@ -8,8 +8,8 @@ Full-stack Scala 3 project skeleton with ZIO backend, Laminar frontend, Tauri de
 - **Backend:** ZIO 2.x + ZIO HTTP - effect-based, type-safe HTTP server
 - **Frontend:** Laminar 17.x via Scala.js - reactive UI framework
 - **Desktop/Mobile:** Tauri 2.x - native wrapper
-- **Infrastructure:** AWS CDK in Scala - Lambda + API Gateway + S3 + CloudFront
-- **Build:** SBT multi-project with sbt-assembly, sbt-scalajs, sbt-buildinfo
+- **Deployment:** Fly.io (Docker) - single machine serves API + static frontend
+- **Build:** SBT multi-project with sbt-assembly, sbt-scalajs
 
 ## Project Structure
 
@@ -17,9 +17,10 @@ Full-stack Scala 3 project skeleton with ZIO backend, Laminar frontend, Tauri de
 scala-skeleton/
 ├── shared/          # Cross-compiled (JVM + JS) - models, validation, utils
 ├── frontend/        # Scala.js + Laminar + Vite + Tauri
-├── backend/         # ZIO HTTP server (packages to Lambda-ready JAR)
-├── infrastructure/  # AWS CDK stacks (BackendStack, FrontendStack)
+├── backend/         # ZIO HTTP server (serves API + static files in prod)
 ├── project/         # SBT plugins and build config
+├── Dockerfile       # Multi-stage build (JDK builder → JRE runtime)
+├── fly.toml         # Fly.io deployment config
 └── build.sbt        # Multi-project build definition
 ```
 
@@ -33,8 +34,6 @@ sbt frontend/fullLinkJS  # Compile Scala.js (production)
 sbt frontend/fastLinkJS  # Compile Scala.js (development)
 cd frontend && npm run dev    # Start Vite dev server (port 5173)
 cd frontend && npx vite build # Build frontend for deployment
-cdk synth                # Synthesise CloudFormation templates
-cdk deploy --all         # Deploy all stacks to AWS
 ```
 
 ## Development Workflow
@@ -42,6 +41,22 @@ cdk deploy --all         # Deploy all stacks to AWS
 1. Run `sbt ~backend/run` for backend hot-reload (port 8080)
 2. Run `cd frontend && npm run dev` for frontend hot-reload (port 5173)
 3. Vite proxies `/api` requests to the backend automatically
+
+## Deployment
+
+Deploys to Fly.io via Docker. The backend serves both:
+- `/api/*` and `/health` — ZIO HTTP API routes
+- `/*` — Static frontend assets with SPA fallback
+
+```bash
+fly deploy           # Deploy to Fly.io
+fly logs             # Tail production logs
+fly status           # Check deployment status
+```
+
+The Dockerfile is a multi-stage build:
+1. Builder stage: JDK 17 + Node 20, builds backend JAR + Vite frontend
+2. Runtime stage: JRE 17 only, runs the fat JAR with frontend in `/public`
 
 ## Code Conventions
 
@@ -52,14 +67,13 @@ cdk deploy --all         # Deploy all stacks to AWS
 - **Formatting:** scalafmt runs on compile, do not disable
 - **Testing:** ZIO Test for backend, minimal frontend tests via Scala.js
 
-## Infrastructure
-
-- **BackendStack:** Lambda (Java 17, 1024MB) + API Gateway with CORS
-- **FrontendStack:** S3 static hosting + CloudFront CDN
-- CDK uses `BuildInfo` plugin to locate the backend JAR at synth time
-
 ## CI/CD
 
 - **PR:** Compile → Test → Assembly → Scala.js build → Vite build → Format check
-- **Main merge:** Full build → CDK deploy (requires AWS OIDC credentials)
+- **Main merge:** Deploy to Fly.io via `flyctl deploy --remote-only`
 - **Auto-fix:** Issues labelled `auto-fix` trigger automated PR generation
+
+## Environment
+
+- `PORT` env var controls server port (default 8080, set by Fly.io)
+- Backend auto-detects `/public` directory for static file serving

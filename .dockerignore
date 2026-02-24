@@ -1,0 +1,16 @@
+target/
+.bsp/
+.metals/
+.bloop/
+project/target/
+project/project/
+node_modules/
+dist/
+.git/
+.github/
+.idea/
+.vscode/
+*.md
+.env*
+frontend/src-tauri/target/
+frontend/src-tauri/gen/

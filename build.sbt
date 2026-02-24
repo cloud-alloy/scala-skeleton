@@ -7,12 +7,6 @@ val laminarV = "17.0.0"
 
 ThisBuild / scalaVersion := scalaV
 
-lazy val versions = new {
-  val awsCdk = "2.113.0"
-  val awsLambdaCore = "1.2.3"
-  val awsLambdaEvents = "3.11.4"
-}
-
 lazy val commonSettings = List(
   scalafmtOnCompile := true
 )
@@ -48,7 +42,7 @@ lazy val frontend = project
     )
   )
 
-// Backend - ZIO HTTP server  
+// Backend - ZIO HTTP server (serves API + static frontend assets)
 lazy val backend = project
   .in(file("backend"))
   .dependsOn(sharedJVM)
@@ -66,32 +60,6 @@ lazy val backend = project
     }
   )
   .enablePlugins(AssemblyPlugin)
-
-// Infrastructure - AWS CDK for deployment
-lazy val infrastructure = project
-  .in(file("infrastructure"))
-  .settings(commonSettings)
-  .settings(
-    name := "Infrastructure",
-    libraryDependencies ++= Seq(
-      "software.amazon.awscdk" % "aws-cdk-lib" % versions.awsCdk,
-      "software.constructs" % "constructs" % "10.3.0"
-    ),
-    (Compile / compile) := (Compile / compile)
-      .dependsOn(
-        backend / assembly
-      ) // ensure backend jar is built before infrastructure
-      .value
-  )
-  .enablePlugins(BuildInfoPlugin)
-  .settings(
-    buildInfoKeys ++= List[BuildInfoKey](
-      BuildInfoKey("backendJarName", "backend.jar"),
-      BuildInfoKey("backendDir", "backend"),
-      BuildInfoKey("backendHandler", "backend.Main")
-    ),
-    buildInfoPackage := "infrastructure"
-  )
 
 // Root project
 lazy val root = project
