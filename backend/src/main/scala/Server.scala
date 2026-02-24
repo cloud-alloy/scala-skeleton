@@ -53,7 +53,7 @@ object Main extends ZIOAppDefault:
       _ <- Console.printLine("  GET /api/message - Get hello message")
       _ <- Console.printLine("  GET /api/greet/:name - Get personalised greeting")
       _ <- ZIO.when(staticDir.exists())(
-             Console.printLine("  GET /* - Static frontend (SPA mode)")
-           )
+        Console.printLine("  GET /* - Static frontend (SPA mode)")
+      )
       _ <- Server.serve(apiRoutes ++ staticRoutes).provide(Server.defaultWithPort(port))
     yield ()

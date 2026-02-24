@@ -27,8 +27,7 @@ COPY frontend/ frontend/
 # Build backend fat JAR
 RUN sbt backend/assembly
 
-# Build frontend (Scala.js -> Vite)
-RUN sbt frontend/fullLinkJS
+# Build frontend (Vite plugin handles Scala.js compilation via SBT)
 RUN cd frontend && npm install && npx vite build
 
 # Copy JAR to known location (avoids fragile Scala version path)
