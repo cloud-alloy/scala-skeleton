@@ -1,0 +1,151 @@
+name: Issue to PR (Auto-Fix)
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  auto-fix:
+    if: github.event.label.name == 'auto-fix'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache SBT
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+            ~/.cache/coursier
+            target
+            project/target
+            */target
+          key: ${{ runner.os }}-sbt-${{ hashFiles('**/*.sbt', 'project/build.properties', 'project/plugins.sbt') }}
+          restore-keys: |
+            ${{ runner.os }}-sbt-
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Create fix branch
+        run: |
+          BRANCH_NAME="fix/issue-${{ github.event.issue.number }}"
+          git checkout -b "$BRANCH_NAME"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Generate fix with Claude Code
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          ISSUE_TITLE="${{ github.event.issue.title }}"
+          ISSUE_BODY=$(cat <<'ISSUE_EOF'
+          ${{ github.event.issue.body }}
+          ISSUE_EOF
+          )
+
+          claude -p "You are fixing a GitHub issue for a Scala 3 full-stack project (scala-skeleton).
+
+          Tech stack: ZIO 2 + ZIO HTTP backend, Laminar (Scala.js) frontend, AWS CDK infrastructure.
+
+          Issue #${{ github.event.issue.number }}: ${ISSUE_TITLE}
+
+          ${ISSUE_BODY}
+
+          Instructions:
+          - Read the relevant source files to understand the codebase
+          - Make the minimal changes needed to fix this issue
+          - Ensure the code compiles (run 'sbt compile' to verify)
+          - Follow existing code patterns and Scala 3 conventions
+          - Do not modify unrelated files" --allowedTools "Edit,Write,Read,Glob,Grep,Bash"
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          git add -A
+          git commit -m "Fix #${{ github.event.issue.number }}: ${{ github.event.issue.title }}"
+          git push origin "$BRANCH_NAME"
+
+      - name: Create pull request
+        if: steps.changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr create \
+            --title "Fix #${{ github.event.issue.number }}: ${{ github.event.issue.title }}" \
+            --body "$(cat <<'EOF'
+          ## Summary
+
+          Automated fix for #${{ github.event.issue.number }}
+
+          ## Changes
+
+          Generated from issue description. Please review carefully before merging.
+
+          ## Test Plan
+
+          - [ ] Code compiles successfully
+          - [ ] Existing tests pass
+          - [ ] Changes address the issue requirements
+          - [ ] No unrelated files modified
+          EOF
+          )" \
+            --base main \
+            --head "$BRANCH_NAME"
+
+      - name: Comment on issue
+        if: steps.changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_URL=$(gh pr view "$BRANCH_NAME" --json url -q .url)
+          gh issue comment ${{ github.event.issue.number }} \
+            --body "A fix has been generated and submitted as ${PR_URL}. Please review the changes."
+
+      - name: Comment if no changes
+        if: steps.changes.outputs.has_changes == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} \
+            --body "The auto-fix workflow ran but was unable to generate changes for this issue. Manual intervention may be needed."
+
+      - name: Notify webhook
+        if: always() && secrets.N8N_WEBHOOK_URL != ''
+        continue-on-error: true
+        run: |
+          curl -s -X POST "${{ secrets.N8N_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"event\": \"auto_fix\",
+              \"repo\": \"${{ github.repository }}\",
+              \"issue\": ${{ github.event.issue.number }},
+              \"issue_title\": \"${{ github.event.issue.title }}\",
+              \"has_changes\": \"${{ steps.changes.outputs.has_changes }}\",
+              \"status\": \"${{ job.status }}\"
+            }"

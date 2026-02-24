@@ -1,0 +1,69 @@
+# Scala/SBT build artifacts
+target/
+.bsp/
+.metals/
+.bloop/
+project/target/
+project/project/target/
+
+# Tauri build artifacts and generated code
+frontend/src-tauri/target/
+frontend/src-tauri/gen/
+frontend/src-tauri/Cargo.lock
+
+# Node.js
+node_modules/
+dist/
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# CDK
+cdk.out/
+cdk.context.json
+
+# Android SDK components (install globally via Android Studio/sdkmanager)
+build-tools/
+cmdline-tools/
+ndk/
+platforms/
+licenses/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary and log files
+.temp/
+*.log
+*.tmp
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Package managers
+.pnpm-debug.log*
+.yarn-integrity
