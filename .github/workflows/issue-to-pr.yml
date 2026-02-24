@@ -136,10 +136,12 @@ jobs:
             --body "The auto-fix workflow ran but was unable to generate changes for this issue. Manual intervention may be needed."
 
       - name: Notify webhook
-        if: always() && secrets.N8N_WEBHOOK_URL != ''
+        if: always() && env.N8N_WEBHOOK_URL != ''
         continue-on-error: true
+        env:
+          N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
         run: |
-          curl -s -X POST "${{ secrets.N8N_WEBHOOK_URL }}" \
+          curl -s -X POST "$N8N_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -d "{
               \"event\": \"auto_fix\",
