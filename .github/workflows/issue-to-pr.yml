@@ -87,6 +87,8 @@ jobs:
       - name: Commit and push
         if: steps.changes.outputs.has_changes == 'true'
         run: |
+          git config user.email "factory@cloud-alloy.dev"
+          git config user.name "Cloud Alloy Factory"
           git add -A
           git commit -m "Fix #${{ github.event.issue.number }}: ${{ github.event.issue.title }}"
           git push origin "$BRANCH_NAME"
