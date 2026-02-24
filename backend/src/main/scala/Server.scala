@@ -36,10 +36,10 @@ object Main extends ZIOAppDefault:
 
           val file = new File(staticDir, filePath)
           if file.exists() && file.isFile then
-            Handler.fromFile(file).toHandler
+            Handler.fromFile(file)
           else
             // SPA fallback: serve index.html for client-side routing
-            Handler.fromFile(new File(staticDir, "index.html")).toHandler
+            Handler.fromFile(new File(staticDir, "index.html"))
         }.flatten
       )
     else Routes.empty
