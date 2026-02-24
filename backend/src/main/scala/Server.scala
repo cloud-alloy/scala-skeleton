@@ -6,6 +6,24 @@ import java.io.File
 
 object Main extends ZIOAppDefault:
 
+  private def contentTypeFor(fileName: String): Header.ContentType =
+    val mediaType = fileName.split('.').lastOption match
+      case Some("html")               => MediaType.text.html
+      case Some("js")                 => MediaType.application.javascript
+      case Some("css")                => MediaType.text.css
+      case Some("json")               => MediaType.application.json
+      case Some("png")                => MediaType.image.png
+      case Some("jpg") | Some("jpeg") => MediaType.image.jpeg
+      case Some("gif")                => MediaType.image.gif
+      case Some("svg")                => MediaType.image.`svg+xml`
+      case Some("ico")                => MediaType.image.`x-icon`
+      case Some("woff")               => MediaType.application.`font-woff`
+      case Some("woff2")              => MediaType(mainType = "font", subType = "woff2")
+      case Some("ttf")                => MediaType(mainType = "font", subType = "ttf")
+      case Some("map")                => MediaType.application.json
+      case _                          => MediaType.application.`octet-stream`
+    Header.ContentType(mediaType)
+
   val apiRoutes: Routes[Any, Response] = Routes(
     // Health check endpoint
     Method.GET / "health" -> handler(Response.text("OK")),
@@ -39,7 +57,12 @@ object Main extends ZIOAppDefault:
             if file.exists() && file.isFile then file
             else new File(staticDir, "index.html") // SPA fallback
 
-          Body.fromFile(targetFile).map(body => Response(body = body))
+          Body.fromFile(targetFile).map { body =>
+            Response(
+              body = body,
+              headers = Headers(contentTypeFor(targetFile.getName))
+            )
+          }
         }
       )
     else Routes.empty
