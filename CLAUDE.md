@@ -67,6 +67,23 @@ The Dockerfile is a multi-stage build:
 - **Formatting:** scalafmt runs on compile, do not disable
 - **Testing:** ZIO Test for backend, minimal frontend tests via Scala.js
 
+## Architecture Decisions
+
+- **SSR via ScalaTags on JVM** — Public pages are server-rendered by `SsrRenderer.scala` using ScalaTags. Laminar SPA takes over on client load (`innerHTML = ""` then `render()`). SSR is backend-only — Tauri builds are unaffected.
+- **Vite manifest for asset refs** — SSR reads `.vite/manifest.json` at startup for hashed JS/CSS paths. No hardcoded filenames.
+- **Fly.io over AWS** — Single Docker container serves API + frontend. Simpler and cheaper for pre-revenue. Migrate to AWS later if needed.
+- **Tauri for mobile, not desktop** — Tauri wraps the Laminar SPA for iOS/Android. Desktop is a side-effect, not the goal.
+- **No Node.js in production** — JRE-only runtime. Vite is build-time only.
+
+## Gotchas
+
+- **ScalaTags `style`** is the CSS attribute in `scalatags.Text.all.*`, not the `<style>` tag. Use `tag("style")` for the HTML element. Same for `footer` — use `tag("footer")`.
+- **ScalaTags `title`** conflicts with the attribute. Import `scalatags.Text.tags2.{title as titleTag}`.
+- **Vite 6 manifest key** is `"index.html"` (the HTML entry), not `"main.js"`. The reader checks both for compatibility.
+- **Laminar `render()` appends** — it does not replace children. Always clear `innerHTML` before mounting over SSR content.
+- **Docker port 8080** — same as local Trilium/other services. Use `-p 9090:8080` for local Docker testing to avoid conflicts.
+- **Fly.io deploy builds remotely** — `flyctl deploy --remote-only` builds on Fly's servers. Local Docker image is not pushed.
+
 ## CI/CD
 
 - **PR:** Compile → Test → Assembly → Scala.js build → Vite build → Format check
