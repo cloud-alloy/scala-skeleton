@@ -50,7 +50,8 @@ lazy val backend = project
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % zioV,
-      "dev.zio" %% "zio-http" % zioHttpV
+      "dev.zio" %% "zio-http" % zioHttpV,
+      "com.lihaoyi" %% "scalatags" % "0.13.1"
     ),
     assembly / assemblyJarName := "backend.jar",
     assembly / assemblyMergeStrategy := {

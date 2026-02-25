@@ -4,11 +4,12 @@ import shared.Message
 
 object Main:
   def main(args: Array[String]): Unit =
-    // Create a message using shared code
     val message = Message.hello
-
-    // Simple reactive counter to demonstrate Laminar reactivity
     val counter = Var(0)
+
+    // Clear any server-rendered content before Laminar takes over
+    val appContainer = dom.document.getElementById("app")
+    appContainer.innerHTML = ""
 
     val app = div(
       cls := "container",
@@ -39,5 +40,4 @@ object Main:
       )
     )
 
-    // Mount to DOM
-    render(dom.document.getElementById("app"), app)
+    render(appContainer, app)

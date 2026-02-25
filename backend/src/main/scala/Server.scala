@@ -25,24 +25,22 @@ object Main extends ZIOAppDefault:
     Header.ContentType(mediaType)
 
   val apiRoutes: Routes[Any, Response] = Routes(
-    // Health check endpoint
     Method.GET / "health" -> handler(Response.text("OK")),
-
-    // API endpoint returning a message
     Method.GET / "api" / "message" -> handler {
       val msg = Message.hello
       Response.json(s"""{"text": "${msg.text}", "timestamp": ${msg.timestamp}}""")
     },
-
-    // Simple greeting endpoint
     Method.GET / "api" / "greet" / string("name") -> handler { (name: String, _: Request) =>
       val msg = Message.create(s"Hello, $name!")
       Response.json(s"""{"text": "${msg.text}", "timestamp": ${msg.timestamp}}""")
     }
   )
 
-  // Serve static frontend files from /public if it exists (production)
   private val staticDir = new File("public")
+
+  // Read Vite manifest once at startup for SSR asset references
+  private val viteAssets: Option[SsrRenderer.ViteAssets] =
+    if staticDir.exists() then SsrRenderer.readViteAssets(staticDir) else None
 
   val staticRoutes: Routes[Any, Response] =
     if staticDir.exists() && staticDir.isDirectory then
@@ -52,17 +50,26 @@ object Main extends ZIOAppDefault:
             case "" | "/" => "index.html"
             case p        => p
 
-          val file = new File(staticDir, filePath)
-          val targetFile =
-            if file.exists() && file.isFile then file
-            else new File(staticDir, "index.html") // SPA fallback
-
-          Body.fromFile(targetFile).map { body =>
-            Response(
-              body = body,
-              headers = Headers(contentTypeFor(targetFile.getName))
+          // SSR for the home page when Vite assets are available
+          if filePath == "index.html" && viteAssets.isDefined then
+            ZIO.succeed(
+              Response(
+                body = Body.fromString(SsrRenderer.renderHomePage(viteAssets.get)),
+                headers = Headers(Header.ContentType(MediaType.text.html))
+              )
             )
-          }
+          else
+            val file = new File(staticDir, filePath)
+            val targetFile =
+              if file.exists() && file.isFile then file
+              else new File(staticDir, "index.html") // SPA fallback
+
+            Body.fromFile(targetFile).map { body =>
+              Response(
+                body = body,
+                headers = Headers(contentTypeFor(targetFile.getName))
+              )
+            }
         }
       )
     else Routes.empty
@@ -77,6 +84,9 @@ object Main extends ZIOAppDefault:
       _ <- Console.printLine("  GET /api/greet/:name - Get personalised greeting")
       _ <- ZIO.when(staticDir.exists())(
         Console.printLine("  GET /* - Static frontend (SPA mode)")
+      )
+      _ <- ZIO.when(viteAssets.isDefined)(
+        Console.printLine(s"  SSR enabled - entry: ${viteAssets.get.js}")
       )
       _ <- Server.serve(apiRoutes ++ staticRoutes).provide(Server.defaultWithPort(port))
     yield ()
