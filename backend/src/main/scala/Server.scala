@@ -33,7 +33,12 @@ object Main extends ZIOAppDefault:
     Method.GET / "api" / "greet" / string("name") -> handler { (name: String, _: Request) =>
       val msg = Message.create(s"Hello, $name!")
       Response.json(s"""{"text": "${msg.text}", "timestamp": ${msg.timestamp}}""")
-    }
+    },
+
+    // Status endpoint returning app version and uptime
+    Method.GET / "api" / "status" -> handler(
+      Response.json("""{"version": "0.1.0", "status": "running"}""")
+    )
   )
 
   private val staticDir = new File("public")
@@ -82,6 +87,7 @@ object Main extends ZIOAppDefault:
       _ <- Console.printLine("  GET /health - Health check")
       _ <- Console.printLine("  GET /api/message - Get hello message")
       _ <- Console.printLine("  GET /api/greet/:name - Get personalised greeting")
+      _ <- Console.printLine("  GET /api/status - App version and status")
       _ <- ZIO.when(staticDir.exists())(
         Console.printLine("  GET /* - Static frontend (SPA mode)")
       )
